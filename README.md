@@ -39,30 +39,31 @@ Or build with pakmanager:
 pakmanager build lateral
 ```
 
-Standalone Usage
+Usage
 ---
 
 ```javascript
 ;(function () {
   'use strict';
 
-  var Lateral = require('lateral').Lateral
+  var Lateral = window.Lateral || require('lateral').Lateral
     , maxCallsAtOnce = 4 // default
     , lateral
     ;
 
-  lateral = Lateral.create(function (complete, item, i) {
+  function onEach(complete, item, i) {
     setTimeout(function () {
       console.log(item);
       complete();
     }, 500);
-  }, maxCallsAtOnce);
+  }
 
-  lateral.add(['a', 'b', 'c', 'd']).when(function () {
-    console.log('did all the things');
-  });
+  lateral = Lateral.create(onEach, maxCallsAtOnce);
 
-  lateral.add(['d', 'e', 'f', 'g']).when(function () {
+  lateral.add(['a', 'b', 'c', 'd']);
+  lateral.add(['d', 'e', 'f', 'g']);
+  
+  lateral.then(function () {
     console.log('did all the things');
   });
 }());
@@ -75,10 +76,8 @@ Creates a Sequence-ish object for the purpose of synchronizing other Futures.
 
 **Core**
 
-  * `lateral = Lateral.create(handler, n)`
+  * `lateral = Lateral.create(fn, n)`
     * create a Lateral that will execute `fn` on each item to do at most `n` things at once
-
   * `lateral.add(arr)` - adds `arr` to be handled by `fn`
-
-  * `lateral.add(arr).when(callback)` 
-    * Fires `callback` when all items in the `arr` batch have been handled
+  * `lateral.then(callback)` 
+    * Fires `callback` when all items in the `arr` have been handled
