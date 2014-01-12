@@ -2,10 +2,6 @@
 ;(function (exports) {
   'use strict';
 
-  var Sequence = exports.Sequence || require('sequence').Sequence
-    , Join = exports.Join || require('join').Join
-    ;
-
   // should be more like sequence than join
   function Lateral(fn, nThreads) {
     var me = this
@@ -15,10 +11,31 @@
       return new Lateral(fn, nThreads);
     }
 
+    // how many threads are allowed
     me._nThreads = nThreads || 4;
+    // how many threads are underway
+    me._begun = 0;
+    // how many have been run
+    me._finished = 0;
+    // the function to run
     me._fn = fn;
-    me._mod = 0;
-    me._sequences = [];
+    // the array of items
+    me._arr = [];
+    me._cbs = [];
+
+    me._onFinishedBound = function () {
+      me._finished += 1;
+      me._onNextBound();
+    };
+    me._onNextBound = function () {
+      if (!me._arr.length && me._finished > 0 && me._finished === me._begun) {
+        me._complete();
+      }
+      while (me._arr.length && (me._begun - me._finished) < me._nThreads) {
+        me._begun += 1;
+        me._fn(me._onFinishedBound, me._arr.shift(), me._begun - 1, me._arr);
+      }
+    };
 
     me.setThreads(me._nThreads);
   }
@@ -26,42 +43,35 @@
 
   Lateral.prototype.setThreads = function (nThreads) {
     var me = this
-      , i
       ;
 
     me._nThreads = nThreads;
-    me._sequences = [];
+    me._onNextBound();
 
-    for (i = 0; i < me._nThreads; i += 1) {
-      me._sequences.push(Sequence.create());
-    }
+    return this;
   };
   Lateral.prototype.add = function (arr) {
     var me = this
-      , join
       ;
 
-    // TODO instantiate the functions lazily
-    // rather than all-at-once and conserve memory
-    arr.forEach(function (item, i) {
-      me._mod = (me._mod % me._sequences.length);
-      me._sequences[me._mod].then(function (next) {
-        me._fn(next, item, i);
-      });
-      me._mod += 1;
+    me._arr = me._arr.concat(arr);
+    me._onNextBound();
+
+    return this;
+  };
+  Lateral.prototype.then = function (cb) {
+    var me = this
+      ;
+
+    me._cbs.push(cb);
+  };
+  Lateral.prototype._complete = function () {
+    var me = this
+      ;
+
+    me._cbs.forEach(function (cb) {
+      cb();
     });
-
-    join = Join.create();
-
-    me._sequences.forEach(function (seq) {
-      var j = join.add();
-      seq.then(function (next) {
-        j();
-        next();
-      });
-    });
-
-    return join;
   };
 
   exports.Lateral = Lateral;
