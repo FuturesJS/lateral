@@ -1,0 +1,40 @@
+{
+  "name": "lateral",
+  "version": "3.0.0",
+  "description": "Like forEachAsync and Join had a baby: sequences out n batches of async functions rather than all at once. Part of FuturesJS (Browser, Node.js, Bower, Pakmanager)",
+  "homepage": "https://github.com/FuturesJS/lateral",
+  "keywords": [
+    "flow-control",
+    "async",
+    "asynchronous",
+    "futures",
+    "promises",
+    "deferreds",
+    "lateral",
+    "parallel",
+    "synchronize",
+    "util",
+    "browser"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/FuturesJS/lateral.git"
+  },
+  "author": {
+    "name": "AJ ONeal",
+    "email": "coolaj86@gmail.com",
+    "url": "http://coolaj86.com"
+  },
+  "main": "lateral.js",
+  "directories": {
+    "lib": "."
+  },
+  "dependencies": {
+  },
+  "engines": {
+    "node": "*",
+    "ender": ">= 0.5.0"
+  },
+  "devDependencies": {},
+  "optionalDependencies": {}
+}
