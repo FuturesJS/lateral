@@ -72,10 +72,6 @@ Usage
 API
 ---
 
-Creates a Sequence-ish object for the purpose of synchronizing other Futures.
-
-**Core**
-
   * `lateral = Lateral.create(fn, n)`
     * create a Lateral that will execute `fn` on each item to do at most `n` things at once
   * `lateral.add(arr)` - adds `arr` to be handled by `fn`
