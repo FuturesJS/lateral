@@ -131,6 +131,7 @@
       ;
 
     me._callbacks.push(cb);
+    return me;
   };
   Lateral.prototype.add = function (arr) {
     var me = this
@@ -141,6 +142,8 @@
       return {
         then: function (fn) {
           fn();
+
+          return this;
         }
       };
     }
