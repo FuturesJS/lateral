@@ -19,6 +19,7 @@ function startOne() {
   var task
     ;
 
+  console.log('running start', running);
   while (running < nThreads && tasks.length) {
     // let lateral know that a turn has completed
     task = tasks.shift();
@@ -41,6 +42,7 @@ function onNext() {
     return;
   }
 
+  console.log('running next', running);
   if (running < nThreads) {
     curThread = (curThread + 1) % threads.length;
     threads[curThread].next();
@@ -57,8 +59,10 @@ function newThread() {
     thread: thisThread
   , each: function (next, item, i, arr) {
       console.log('each');
+      // at the moment this next function is called,
+      // this each function should immediately be called again
+      thisThread.next = next;
       tasks.push(function () {
-        thisThread.next = next;
         fn(onThingDone, item, i, arr);
       });
       startOne();
@@ -91,4 +95,9 @@ function add(arr) {
   return forAllAsync(arr, t.each, 1).then(t.complete);
 }
 
-add([1,2,3,5,7,11,37,42]);
+add([1,2,3,5,7,11,37,42]).then(function () {
+  console.log('batch 1 complete');
+});
+add('abcdefghijkl'.split('')).then(function () {
+  console.log('batch 2 complete');
+});
