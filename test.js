@@ -13,7 +13,13 @@
     }, timeout);
   }, 4);
 
-  lateral.add('abcdefghijklmnopqrstuvwxyz'.split('')).then(function () {
-    console.log('finished lowercase batch');
+  lateral.add('abcdefghijkl'.split('')).then(function () {
+    console.log('batch 1 complete');
+  });
+  lateral.add([1,2,3,5,7,11,37,42]).then(function () {
+    console.log('batch 2 complete');
+  });
+  lateral.then(function () {
+    console.log('all batches complete');
   });
 }());

@@ -2,77 +2,120 @@
 ;(function (exports) {
   'use strict';
 
-  // should be more like sequence than join
-  function Lateral(fn, nThreads) {
-    var me = this
+  function Lateral(fn, _nThreads) {
+    var threads = []
+      , curThread = 0
+      , nThreads = _nThreads || 4
+      , running = 0
+      //, forEachAsync = exports.forEachAsync || require('../forEachAsync').forEachAsync
+      , forAllAsync = exports.forAllAsync || require('../forallasync').forAllAsync
+      , tasks = []
+      , callbacks = []
       ;
 
-    if (!(me instanceof Lateral)) {
-      return new Lateral(fn, nThreads);
+    function startOne() {
+      var task
+        ;
+
+      while (running < nThreads && tasks.length) {
+        // let lateral know that a turn has completed
+        task = tasks.shift();
+        running += 1;
+        task();
+        onNext();
+      }
     }
 
-    // how many threads are allowed
-    me._nThreads = nThreads || 4;
-    // how many threads are underway
-    me._begun = 0;
-    // how many have been run
-    me._finished = 0;
-    // the function to run
-    me._fn = fn;
-    // the array of items
-    me._arr = [];
-    me._cbs = [];
+    function onThingDone() {
+      running -= 1;
+      onNext();
+    }
 
-    me._onFinishedBound = function () {
-      me._finished += 1;
-      me._onNextBound();
-    };
-    me._onNextBound = function () {
-      if (!me._arr.length && me._finished > 0 && me._finished === me._begun) {
-        me._complete();
+    function onNext() {
+      if (!threads.length) {
+        if (0 === running) {
+          callbacks.forEach(function (cb) {
+            cb();
+          });
+        }
+        return;
       }
-      while (me._arr.length && (me._begun - me._finished) < me._nThreads) {
-        me._begun += 1;
-        me._fn(me._onFinishedBound, me._arr.shift(), me._begun - 1, me._arr);
-      }
-    };
 
-    me.setThreads(me._nThreads);
+      if (running < nThreads) {
+        curThread = (curThread + 1) % threads.length;
+        threads[curThread].next();
+      }
+    }
+
+    function newThread(len) {
+      var thisThread = { length: len, done: 0, callbacks: [] }
+        , api
+        ;
+
+      threads.push(thisThread);
+
+      api = {
+        _thread: thisThread
+      , each: function (next, item, i, arr) {
+          // at the moment this next function is called,
+          // this each function should immediately be called again
+          thisThread.next = next;
+          tasks.push(function () {
+            fn(function (next, item, i, arr) {
+              thisThread.done += 1;
+              if (thisThread.done === thisThread.length) {
+                api.complete();
+              }
+              onThingDone(next, item, i, arr);
+            }, item, i, arr);
+          });
+          startOne();
+        }
+      , complete: function () {
+          thisThread.callbacks.forEach(function (cb) {
+            cb();
+          });
+          var threadIndex
+            ;
+
+          threads.some(function (t, i) {
+            if (t === thisThread) {
+              threadIndex = i;
+              return true;
+            }
+          });
+
+          // remove this thread
+          threads.splice(threadIndex, 1);
+          if (curThread >= threadIndex) {
+            curThread -= 1;
+          }
+          onNext();
+        }
+      };
+      return api;
+    }
+
+    return {
+      add: function (arr) {
+        var t = newThread(arr.length)
+          ;
+
+        //forEachAsync(arr, t.each);
+        forAllAsync(arr, t.each, 1).then(t.complete);
+
+        return {
+          then: function (fn) {
+            t._thread.callbacks.push(fn);
+          }
+        };
+      }
+    , then: function (cb) {
+        callbacks.push(cb);
+      }
+    };
   }
   Lateral.create = Lateral;
-
-  Lateral.prototype.setThreads = function (nThreads) {
-    var me = this
-      ;
-
-    me._nThreads = nThreads;
-    me._onNextBound();
-
-    return this;
-  };
-  Lateral.prototype.add = function (arr) {
-    var me = this
-      ;
-
-    me._arr = me._arr.concat(arr);
-    me._onNextBound();
-
-    return this;
-  };
-  Lateral.prototype.then = function (cb) {
-    var me = this
-      ;
-
-    me._cbs.push(cb);
-  };
-  Lateral.prototype._complete = function () {
-    var me = this
-      ;
-
-    me._cbs.forEach(function (cb) {
-      cb();
-    });
-  };
 
   exports.Lateral = Lateral;
 }('undefined' !== typeof exports && exports || new Function('return this')()));
