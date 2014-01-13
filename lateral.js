@@ -6,54 +6,62 @@
     ;
 
   function Thread(lat, len) {
-    var thisThread = { length: len, done: 0, callbacks: [] }
-      , api
+    var me = this
       ;
 
-    lat._threads.push(thisThread);
+    if (!(this instanceof Thread)) {
+      return new Thread(lat, len);
+    }
 
-    api = {
-      _thread: thisThread
-    , each: function (next, item, i, arr) {
-        // at the moment this next function is called,
-        // this each function should immediately be called again
-        thisThread.next = next;
-        lat._tasks.push(function () {
-          lat._fn(function (next, item, i, arr) {
-            thisThread.done += 1;
-            if (thisThread.done === thisThread.length) {
-              api.complete();
-            }
-            lat._onThingDone(next, item, i, arr);
-          }, item, i, arr);
-        });
-        lat._startOne();
-      }
-    , complete: function () {
-        thisThread.callbacks.forEach(function (cb) {
-          cb();
-        });
-        var threadIndex
-          ;
+    me._length = len;
+    me._done = 0;
+    me._callbacks = [];
+    me._lateral = lat;
 
-        lat._threads.some(function (t, i) {
-          if (t === thisThread) {
-            threadIndex = i;
-            return true;
+    lat._threads.push(me);
+
+    me.eachBound = function (next, item, i, arr) {
+      // at the moment this next function is called,
+      // this each function should immediately be called again
+      me.next = next;
+      lat._tasks.push(function () {
+        lat._fn(function (next, item, i, arr) {
+          me._done += 1;
+          if (me._done === me._length) {
+            me.complete();
           }
-        });
-
-        // remove this thread
-        lat._threads.splice(threadIndex, 1);
-        if (lat._curThread >= threadIndex) {
-          lat._curThread -= 1;
-        }
-        lat._onNext();
-      }
+          lat._onThingDone(next, item, i, arr);
+        }, item, i, arr);
+      });
+      lat._startOne();
     };
-    return api;
   }
   Thread.create = Thread;
+
+  Thread.prototype.complete = function () {
+    var me = this
+      , lat = me._lateral
+      , threadIndex
+      ;
+
+    me._callbacks.forEach(function (cb) {
+      cb();
+    });
+
+    lat._threads.some(function (t, i) {
+      if (t === me) {
+        threadIndex = i;
+        return true;
+      }
+    });
+
+    // remove this thread
+    lat._threads.splice(threadIndex, 1);
+    if (lat._curThread >= threadIndex) {
+      lat._curThread -= 1;
+    }
+    lat._onNext();
+  };
 
   function Lateral(fn, _nThreads) {
     if (!(this instanceof Lateral)) {
@@ -138,13 +146,13 @@
     }
 
     me._completedAll = false;
-    t = me._Thread.create(me, arr.length);
+    t = Thread.create(me, arr.length);
 
-    forEachAsync(arr, t.each);
+    forEachAsync(arr, t.eachBound);
 
     return {
       then: function (fn) {
-        t._thread.callbacks.push(fn);
+        t._callbacks.push(fn);
 
         return this;
       }
