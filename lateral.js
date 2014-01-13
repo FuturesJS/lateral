@@ -7,8 +7,8 @@
       , curThread = 0
       , nThreads = _nThreads || 4
       , running = 0
-      //, forEachAsync = exports.forEachAsync || require('../forEachAsync').forEachAsync
-      , forAllAsync = exports.forAllAsync || require('../forallasync').forAllAsync
+      //, forEachAsync = exports.forEachAsync || require('forEachAsync').forEachAsync
+      , forAllAsync = exports.forAllAsync || require('forallasync').forAllAsync
       , tasks = []
       , callbacks = []
       ;
@@ -102,7 +102,7 @@
           ;
 
         //forEachAsync(arr, t.each);
-        forAllAsync(arr, t.each, 1).then(t.complete);
+        forAllAsync(arr, t.each, 1);
 
         return {
           then: function (fn) {

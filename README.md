@@ -81,3 +81,10 @@ API
   * `lateral.add(arr).then(cb)` - adds `arr` to be handled by `fn` and `cb` is called when all in `arr` are handled
   * `lateral.then(callback)` 
     * Fires `callback` when all items in added arrays have been handled
+
+TODO
+---
+
+Replace `forAllAsync` with `forEachAsync`
+
+Make work with synchronous callbacks as well

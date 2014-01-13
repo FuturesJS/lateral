@@ -21,7 +21,7 @@
     "browser"
   ],
   "dependencies": {
-    "forEachAsync": "~ 3.0"
+    "forallasync": "~ 1.0"
   },
   "license": "Apache-v2",
   "ignore": [

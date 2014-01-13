@@ -30,7 +30,7 @@
     "lib": "."
   },
   "dependencies": {
-    "forEachAsync": "~ 3.0"
+    "forallasync": "~ 1.0"
   },
   "engines": {
     "node": "*",
