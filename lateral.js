@@ -6,6 +6,9 @@
     ;
 
   function Lateral(fn, _nThreads) {
+    if (!(this instanceof Lateral)) {
+      return new Lateral(fn, _nThreads);
+    }
     var me = this
       , curThread = 0
       , nThreads = _nThreads || 4
@@ -108,32 +111,6 @@
     }
     Thread.create = Thread;
     me._Thread = Thread;
-
-    return {
-      add: function (arr) {
-        if (0 === arr.length) {
-          return {
-            then: function (fn) {
-              fn();
-            }
-          };
-        }
-        me._completedAll = false;
-        var t = Thread.create(me, arr.length)
-          ;
-
-        forEachAsync(arr, t.each);
-
-        return {
-          then: function (fn) {
-            t._thread.callbacks.push(fn);
-          }
-        };
-      }
-    , then: function (cb) {
-        me._callbacks.push(cb);
-      }
-    };
   }
   Lateral.create = Lateral;
 

@@ -6,7 +6,7 @@
     ;
 
   lateral = Lateral.create(function (complete, item, i) {
-    var timeout = 1000;
+    var timeout = Math.round(Math.random() * 1000);
     setTimeout(function () {
       console.log(item, i, timeout);
       complete();
