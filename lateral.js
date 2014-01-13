@@ -2,16 +2,20 @@
 ;(function (exports) {
   'use strict';
 
+  var forEachAsync = exports.forEachAsync || require('forEachAsync').forEachAsync
+    ;
+
   function Lateral(fn, _nThreads) {
-    var threads = []
+    var me = this
       , curThread = 0
       , nThreads = _nThreads || 4
       , running = 0
-      , forEachAsync = exports.forEachAsync || require('forEachAsync').forEachAsync
       , tasks = []
-      , callbacks = []
       , completedAll = true
       ;
+
+    me._threads = [];
+    me._callbacks = [];
 
     function startOne() {
       var task
@@ -32,10 +36,10 @@
     }
 
     function onNext() {
-      if (!threads.length) {
+      if (!me._threads.length) {
         if (0 === running && !completedAll) {
           completedAll = true;
-          callbacks.forEach(function (cb) {
+          me._callbacks.forEach(function (cb) {
             cb();
           });
         }
@@ -43,23 +47,23 @@
       }
 
       if (running < nThreads) {
-        curThread = (curThread + 1) % threads.length;
-        if (threads[curThread].next) {
-          threads[curThread].nowNext = threads[curThread].next;
-          threads[curThread].next = null;
-          threads[curThread].nowNext();
+        curThread = (curThread + 1) % me._threads.length;
+        if (me._threads[curThread].next) {
+          me._threads[curThread].nowNext = me._threads[curThread].next;
+          me._threads[curThread].next = null;
+          me._threads[curThread].nowNext();
         } else {
-          curThread = Math.max(0, (curThread + (threads.length - 1))) % threads.length;
+          curThread = Math.max(0, (curThread + (me._threads.length - 1))) % me._threads.length;
         }
       }
     }
 
-    function newThread(len) {
+    function Thread(lat, len) {
       var thisThread = { length: len, done: 0, callbacks: [] }
         , api
         ;
 
-      threads.push(thisThread);
+      lat._threads.push(thisThread);
 
       api = {
         _thread: thisThread
@@ -85,7 +89,7 @@
           var threadIndex
             ;
 
-          threads.some(function (t, i) {
+          lat._threads.some(function (t, i) {
             if (t === thisThread) {
               threadIndex = i;
               return true;
@@ -93,7 +97,7 @@
           });
 
           // remove this thread
-          threads.splice(threadIndex, 1);
+          lat._threads.splice(threadIndex, 1);
           if (curThread >= threadIndex) {
             curThread -= 1;
           }
@@ -102,6 +106,7 @@
       };
       return api;
     }
+    Thread.create = Thread;
 
     return {
       add: function (arr) {
@@ -113,7 +118,7 @@
           };
         }
         completedAll = false;
-        var t = newThread(arr.length)
+        var t = Thread.create(me, arr.length)
           ;
 
         forEachAsync(arr, t.each);
@@ -125,11 +130,18 @@
         };
       }
     , then: function (cb) {
-        callbacks.push(cb);
+        me._callbacks.push(cb);
       }
     };
   }
   Lateral.create = Lateral;
+
+  Lateral.prototype.then = function (cb) {
+    var me = this
+      ;
+
+    me._callbacks.push(cb);
+  };
 
   exports.Lateral = Lateral;
 }('undefined' !== typeof exports && exports || new Function('return this')()));
