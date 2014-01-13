@@ -9,7 +9,7 @@ Say you have 500 http requests that you want to get done
 10 at a time in batches of 400, 50, and 50 and you want
 to know when each batch (and all batches) have finished...  `lateral` is your guy!
 
-Node Installation
+Node.js Installation
 ---
 
 Node.JS (Server):
