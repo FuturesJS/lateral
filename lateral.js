@@ -11,11 +11,11 @@
       , nThreads = _nThreads || 4
       , running = 0
       , tasks = []
-      , completedAll = true
       ;
 
     me._threads = [];
     me._callbacks = [];
+    me._completedAll = true;
 
     function startOne() {
       var task
@@ -37,8 +37,8 @@
 
     function onNext() {
       if (!me._threads.length) {
-        if (0 === running && !completedAll) {
-          completedAll = true;
+        if (0 === running && !me._completedAll) {
+          me._completedAll = true;
           me._callbacks.forEach(function (cb) {
             cb();
           });
@@ -107,6 +107,7 @@
       return api;
     }
     Thread.create = Thread;
+    me._Thread = Thread;
 
     return {
       add: function (arr) {
@@ -117,7 +118,7 @@
             }
           };
         }
-        completedAll = false;
+        me._completedAll = false;
         var t = Thread.create(me, arr.length)
           ;
 
@@ -141,6 +142,32 @@
       ;
 
     me._callbacks.push(cb);
+  };
+  Lateral.prototype.add = function (arr) {
+    var me = this
+      , t
+      ;
+
+    if (0 === arr.length) {
+      return {
+        then: function (fn) {
+          fn();
+        }
+      };
+    }
+
+    me._completedAll = false;
+    t = me._Thread.create(me, arr.length);
+
+    forEachAsync(arr, t.each);
+
+    return {
+      then: function (fn) {
+        t._thread.callbacks.push(fn);
+
+        return this;
+      }
+    };
   };
 
   exports.Lateral = Lateral;
