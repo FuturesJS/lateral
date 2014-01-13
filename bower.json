@@ -1,7 +1,7 @@
 {
   "name": "lateral",
   "main": "lateral.js",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "homepage": "https://github.com/FuturesJS/lateral",
   "authors": [
     "AJ ONeal <coolaj86@gmail.com>"
@@ -21,7 +21,7 @@
     "browser"
   ],
   "dependencies": {
-    "forallasync": "~ 1.0"
+    "forEachAsync": "~ 3.0"
   },
   "license": "Apache-v2",
   "ignore": [

@@ -85,6 +85,4 @@ API
 TODO
 ---
 
-Replace `forAllAsync` with `forEachAsync`
-
-Make work with synchronous callbacks as well
+The code is a little hairy and could use some cleaning.

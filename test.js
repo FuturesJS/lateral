@@ -13,6 +13,9 @@
     }, timeout);
   }, 4);
 
+  lateral.add([]).then(function () {
+    console.log('empty batch complete');
+  });
   lateral.add('abcdefghijkl'.split('')).then(function () {
     console.log('batch 1 complete');
   });

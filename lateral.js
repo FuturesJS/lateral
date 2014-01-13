@@ -7,10 +7,10 @@
       , curThread = 0
       , nThreads = _nThreads || 4
       , running = 0
-      //, forEachAsync = exports.forEachAsync || require('forEachAsync').forEachAsync
-      , forAllAsync = exports.forAllAsync || require('forallasync').forAllAsync
+      , forEachAsync = exports.forEachAsync || require('forEachAsync').forEachAsync
       , tasks = []
       , callbacks = []
+      , completedAll = true
       ;
 
     function startOne() {
@@ -33,7 +33,8 @@
 
     function onNext() {
       if (!threads.length) {
-        if (0 === running) {
+        if (0 === running && !completedAll) {
+          completedAll = true;
           callbacks.forEach(function (cb) {
             cb();
           });
@@ -43,7 +44,13 @@
 
       if (running < nThreads) {
         curThread = (curThread + 1) % threads.length;
-        threads[curThread].next();
+        if (threads[curThread].next) {
+          threads[curThread].nowNext = threads[curThread].next;
+          threads[curThread].next = null;
+          threads[curThread].nowNext();
+        } else {
+          curThread = Math.max(0, (curThread + (threads.length - 1))) % threads.length;
+        }
       }
     }
 
@@ -98,11 +105,18 @@
 
     return {
       add: function (arr) {
+        if (0 === arr.length) {
+          return {
+            then: function (fn) {
+              fn();
+            }
+          };
+        }
+        completedAll = false;
         var t = newThread(arr.length)
           ;
 
-        //forEachAsync(arr, t.each);
-        forAllAsync(arr, t.each, 1);
+        forEachAsync(arr, t.each);
 
         return {
           then: function (fn) {
