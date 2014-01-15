@@ -3,6 +3,7 @@
   'use strict';
 
   var forEachAsync = exports.forEachAsync || require('forEachAsync').forEachAsync
+    , debug = { assignments: {} }
     ;
 
   function Thread(lat, len) {
@@ -13,6 +14,8 @@
       return new Thread(lat, len);
     }
 
+    Thread._index += 1;
+    me._id = Thread._index;
     me._length = len;
     me._done = 0;
     me._callbacks = [];
@@ -20,23 +23,53 @@
 
     lat._threads.push(me);
 
+    function realNext() {
+      me._done += 1;
+
+      if (me._done === me._length) {
+        me.complete();
+      }
+
+      lat._onThingDone();
+    }
+
+    me._nexts = [];
+
+    debug.assignments[me._id] = { id: me._id, len: len, cbs: {} };
+
     me.eachBound = function (next, item, i, arr) {
+      debug.assignments[me._id].cbs[i] = true;
       // at the moment this next function is called,
       // this each function should immediately be called again
-      me.next = next;
-      lat._tasks.push(function () {
-        lat._fn(function (next, item, i, arr) {
-          me._done += 1;
-          if (me._done === me._length) {
-            me.complete();
-          }
-          lat._onThingDone(next, item, i, arr);
-        }, item, i, arr);
-      });
+      me._nexts.push(next);
+      /*
+      function doTask() {
+        lat._fn(realNext, item, i, arr);
+      }
+      */
+      lat._tasks.push({ next: realNext, item: item, i: i, arr: arr });
       lat._startOne();
     };
+
+    process.on('exit', function () {
+      var i
+        , assignment = debug.assignments[me._id]
+        ;
+
+      assignment.ran = 0;
+      for (i = 0; i < assignment.len; i += 1) {
+        if (assignment.cbs[i]) {
+          assignment.ran += 1;
+        }
+      }
+      if (assignment.ran === assignment.len) {
+        delete assignment.cbs;
+      }
+      console.log(debug.assignments[me._id]);
+    });
   }
   Thread.create = Thread;
+  Thread._index = 0;
 
   Thread.prototype.complete = function () {
     var me = this
@@ -45,7 +78,7 @@
       ;
 
     me._callbacks.forEach(function (cb) {
-      cb();
+      cb(me._done, me._length);
     });
 
     lat._threads.some(function (t, i) {
@@ -60,7 +93,7 @@
     if (lat._curThread >= threadIndex) {
       lat._curThread -= 1;
     }
-    lat._onNext();
+    //lat._onNext();
   };
 
   function Lateral(fn, _nThreads) {
@@ -87,7 +120,8 @@
         // let lateral know that a turn has completed
         task = me._tasks.shift();
         me._running += 1;
-        task();
+        me._fn(task.next, task.item, task.i, task.arr);
+        //task();
         me._onNext();
       }
     };
@@ -95,6 +129,7 @@
     me._onThingDone = function () {
       me._running -= 1;
       me._onNext();
+      me._startOne();
     };
 
     me._Thread = Thread;
@@ -103,6 +138,7 @@
 
   Lateral.prototype._onNext = function () {
     var me = this
+      , thread
       ;
 
     if (!me._threads.length) {
@@ -111,18 +147,26 @@
         me._callbacks.forEach(function (cb) {
           cb();
         });
+      } else {
+        console.log('out of threads');
       }
       return;
     }
 
     if (me._running < me._nThreads) {
       me._curThread = (me._curThread + 1) % me._threads.length;
-      if (me._threads[me._curThread].next) {
-        me._threads[me._curThread].nowNext = me._threads[me._curThread].next;
-        me._threads[me._curThread].next = null;
-        me._threads[me._curThread].nowNext();
+
+      thread = me._threads[me._curThread];
+      if (thread._nexts.length) {
+        me._threads[me._curThread]._nexts.shift()();
       } else {
-        me._curThread = Math.max(0, (me._curThread + (me._threads.length - 1))) % me._threads.length;
+        console.log('[MISSING]', me._curThread + 1, 'of', me._threads.length
+          , '([' + thread._id + ']'
+          , thread._done
+          , 'of'
+          , thread._length + ')');
+        console.log('running', me._running + 1, 'of', me._nThreads);
+        //me._curThread = Math.max(0, (me._curThread + (me._threads.length))) % me._threads.length;
       }
     }
   };
