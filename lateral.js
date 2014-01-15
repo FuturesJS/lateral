@@ -3,7 +3,6 @@
   'use strict';
 
   var forEachAsync = exports.forEachAsync || require('forEachAsync').forEachAsync
-    , debug = { assignments: {} }
     ;
 
   function Thread(lat, len) {
@@ -35,38 +34,13 @@
 
     me._nexts = [];
 
-    debug.assignments[me._id] = { id: me._id, len: len, cbs: {} };
-
     me.eachBound = function (next, item, i, arr) {
-      debug.assignments[me._id].cbs[i] = true;
       // at the moment this next function is called,
       // this each function should immediately be called again
       me._nexts.push(next);
-      /*
-      function doTask() {
-        lat._fn(realNext, item, i, arr);
-      }
-      */
       lat._tasks.push({ next: realNext, item: item, i: i, arr: arr });
       lat._startOne();
     };
-
-    process.on('exit', function () {
-      var i
-        , assignment = debug.assignments[me._id]
-        ;
-
-      assignment.ran = 0;
-      for (i = 0; i < assignment.len; i += 1) {
-        if (assignment.cbs[i]) {
-          assignment.ran += 1;
-        }
-      }
-      if (assignment.ran === assignment.len) {
-        delete assignment.cbs;
-      }
-      console.log(debug.assignments[me._id]);
-    });
   }
   Thread.create = Thread;
   Thread._index = 0;
@@ -78,7 +52,7 @@
       ;
 
     me._callbacks.forEach(function (cb) {
-      cb(me._done, me._length);
+      cb(/*me._done, me._length*/);
     });
 
     lat._threads.some(function (t, i) {
@@ -93,7 +67,6 @@
     if (lat._curThread >= threadIndex) {
       lat._curThread -= 1;
     }
-    //lat._onNext();
   };
 
   function Lateral(fn, _nThreads) {
@@ -121,7 +94,6 @@
         task = me._tasks.shift();
         me._running += 1;
         me._fn(task.next, task.item, task.i, task.arr);
-        //task();
         me._onNext();
       }
     };
@@ -147,8 +119,6 @@
         me._callbacks.forEach(function (cb) {
           cb();
         });
-      } else {
-        console.log('out of threads');
       }
       return;
     }
@@ -160,13 +130,9 @@
       if (thread._nexts.length) {
         me._threads[me._curThread]._nexts.shift()();
       } else {
-        console.log('[MISSING]', me._curThread + 1, 'of', me._threads.length
-          , '([' + thread._id + ']'
-          , thread._done
-          , 'of'
-          , thread._length + ')');
-        console.log('running', me._running + 1, 'of', me._nThreads);
-        //me._curThread = Math.max(0, (me._curThread + (me._threads.length))) % me._threads.length;
+        // TODO should we unskip the thread that wasn't ready?
+        // after all, I'm not even sure why the onNext / startOne block happens
+        //me._curThread = Math.max(0, (me._curThread + (me._threads.length - 1))) % me._threads.length;
       }
     }
   };
